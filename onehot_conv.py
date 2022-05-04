@@ -1,9 +1,12 @@
 # This function converts the labelling in dataset into onehot notations
+import os
 import json
 import numpy as np
 
 def load_data(file_location):
-    f = open(file_location)
+    cur_dir = os.path.dirname(__file__)
+    parent_dir = os.path.split(cur_dir)[0]
+    f = open(parent_dir+'/dataset/'+file_location)
     data = json.load(f)
     
     data_name = []
