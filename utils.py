@@ -1,9 +1,12 @@
-# This function converts the labelling in dataset into onehot notations
+'''
+This file contains all the util functions that are needed to extract information from dataset
+'''
 import os
 import json
 import numpy as np
 
-def load_data(file_location):
+# convert labels [0,10] into onehot labels
+def onehot_labels(file_location):
     cur_dir = os.path.dirname(__file__)
     parent_dir = os.path.split(cur_dir)[0]
     f = open(parent_dir+'/dataset/'+file_location)
@@ -20,9 +23,7 @@ def load_data(file_location):
     return data_name, data_label
 
 def main():
-    name, label = load_data('annotation_dict.json')
-    print(name)
-    print(label)
+    name, label = onehot_labels('annotation_dict.json')
 
 if __name__ == '__main__':
     main()
