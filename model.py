@@ -39,6 +39,38 @@ def sigmoid(x):
     return 1/(1+np.exp(-x))
     # *** END CODE HERE ***
 
+def relu(x):
+    return (abs(x)+x)/2
+
+
+def forward_prop_relu(data, labels, params):
+    W1 = params.get("W1")
+    b1 = params.get("b1")
+    W2 = params.get("W2")
+    b2 = params.get("b2")
+
+    a = relu(data @ W1 + b1)
+    z = a @ W2 + b2
+    y_hat = softmax(z/1000)
+    J = -1 / data.shape[0] * np.sum(labels * np.log(y_hat))
+
+    return a, y_hat, J
+
+
+def backward_prop_relu(data, labels, params, forward_prop_func, reg):
+    W1 = params.get("W1")
+    W2 = params.get("W2")
+    a, y_hat, J = forward_prop_func(data, labels, params)
+
+    dJ_dz = (y_hat - labels)/1000
+    dJ_dW2 = (dJ_dz.T @ a).T / a.shape[0] + + 2*reg*W2
+    dJ_db2 = np.mean(dJ_dz, axis=0)
+    dJ_dW1 = ((dJ_dz @ W2.T * a / (a + 1e-5)).T @ data).T / a.shape[0] + + 2*reg*W1
+    dJ_db1 = np.mean(dJ_dz @ W2.T * a / (a + 1e-5), axis=0)
+
+    return {"W1": dJ_dW1, "b1": dJ_db1, "W2": dJ_dW2, "b2": dJ_db2}
+
+
 def get_initial_params(input_size, num_hidden, num_output):
     """
     Compute the initial parameters for the neural network.
@@ -250,11 +282,11 @@ def compute_accuracy(output, labels):
         np.argmax(labels,axis=1)).sum() * 1. / labels.shape[0]
     return accuracy
 
-def run_train_test(name, all_data, all_labels, backward_prop_func, num_epochs, plot=True):
+def run_train_test(name, all_data, all_labels, forward_prop_func, backward_prop_func, num_epochs, plot=True):
     params, cost_train, cost_dev, accuracy_train, accuracy_dev = nn_train(
         all_data['train'], all_labels['train'], 
         all_data['dev'], all_labels['dev'],
-        get_initial_params, forward_prop, backward_prop_func,
+        get_initial_params, forward_prop_func, backward_prop_func,
         num_hidden=300, learning_rate=3, num_epochs=num_epochs, batch_size=250
     )
 
@@ -319,14 +351,18 @@ def main(plot=True):
         'test': test_labels,
     }
 
-    non_reg_acc = run_train_test('non_reg', all_data, all_labels, backward_prop, num_epochs, plot)
-    '''
-    reg_acc = run_train_test('regularized', all_data, all_labels,
-        lambda a, b, c, d: backward_prop_regularized(a, b, c, d, reg=0.0001),
-        num_epochs, plot)
-    '''
-    return non_reg_acc
+    #non_reg_acc = run_train_test('non_reg', all_data, all_labels, forward_prop, backward_prop, num_epochs, plot)
+
+    #reg_acc = run_train_test('regularized', all_data, all_labels, forward_prop,
+    #    lambda a, b, c, d: backward_prop_regularized(a, b, c, d, reg=0.0001),
+    #    num_epochs, plot)
+
+    relu_acc = run_train_test('relu', all_data, all_labels, forward_prop_relu,
+       lambda a, b, c, d: backward_prop_relu(a, b, c, d, reg=0.0001),
+       num_epochs, plot)
+    #return non_reg_acc
     #return reg_acc
+    return relu_acc
 
 if __name__ == '__main__':
     main()
