@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import argparse
+import utils
 
 def softmax(x):
     """
@@ -221,7 +221,7 @@ def nn_train(
 
     (nexp, dim) = train_data.shape
 
-    params = get_initial_params_func(dim, num_hidden, 10)
+    params = get_initial_params_func(dim, num_hidden, 11)
 
     cost_train = []
     cost_dev = []
@@ -250,22 +250,12 @@ def compute_accuracy(output, labels):
         np.argmax(labels,axis=1)).sum() * 1. / labels.shape[0]
     return accuracy
 
-def one_hot_labels(labels):
-    one_hot_labels = np.zeros((labels.size, 10))
-    one_hot_labels[np.arange(labels.size),labels.astype(int)] = 1
-    return one_hot_labels
-
-def read_data(images_file, labels_file):
-    x = np.loadtxt(images_file, delimiter=',')
-    y = np.loadtxt(labels_file, delimiter=',')
-    return x, y
-
 def run_train_test(name, all_data, all_labels, backward_prop_func, num_epochs, plot=True):
     params, cost_train, cost_dev, accuracy_train, accuracy_dev = nn_train(
         all_data['train'], all_labels['train'], 
         all_data['dev'], all_labels['dev'],
         get_initial_params, forward_prop, backward_prop_func,
-        num_hidden=300, learning_rate=5, num_epochs=num_epochs, batch_size=1000
+        num_hidden=300, learning_rate=3, num_epochs=num_epochs, batch_size=250
     )
 
     t = np.arange(num_epochs)
@@ -297,30 +287,24 @@ def run_train_test(name, all_data, all_labels, backward_prop_func, num_epochs, p
     return accuracy
 
 def main(plot=True):
-    parser = argparse.ArgumentParser(description='Train a nn model.')
-    parser.add_argument('--num_epochs', type=int, default=30)
+    num_epochs = 15
 
-    args = parser.parse_args()
+    file, label = utils.onehot_labels('annotation_dict.json')
+    data = np.load('img.npy')
 
-    np.random.seed(100)
-    train_data, train_labels = read_data('./images_train.csv', './labels_train.csv')
-    train_labels = one_hot_labels(train_labels)
-    p = np.random.permutation(60000)
-    train_data = train_data[p,:]
-    train_labels = train_labels[p,:]
+    train_data = data[2500:15000, :]
+    train_labels = label[2500:15000, :]
 
-    dev_data = train_data[0:10000,:]
-    dev_labels = train_labels[0:10000,:]
-    train_data = train_data[10000:,:]
-    train_labels = train_labels[10000:,:]
+    dev_data = data[0:2500, :]
+    dev_labels = label[0:2500, :]
 
     mean = np.mean(train_data)
     std = np.std(train_data)
     train_data = (train_data - mean) / std
     dev_data = (dev_data - mean) / std
 
-    test_data, test_labels = read_data('./images_test.csv', './labels_test.csv')
-    test_labels = one_hot_labels(test_labels)
+    test_data = data[15000:16000, :]
+    test_labels = label[15000:16000, :]
     test_data = (test_data - mean) / std
 
     all_data = {
@@ -334,13 +318,15 @@ def main(plot=True):
         'dev': dev_labels,
         'test': test_labels,
     }
-    
-    baseline_acc = run_train_test('baseline', all_data, all_labels, backward_prop, args.num_epochs, plot)
-    reg_acc = run_train_test('regularized', all_data, all_labels, 
+
+    non_reg_acc = run_train_test('non_reg', all_data, all_labels, backward_prop, num_epochs, plot)
+    '''
+    reg_acc = run_train_test('regularized', all_data, all_labels,
         lambda a, b, c, d: backward_prop_regularized(a, b, c, d, reg=0.0001),
-        args.num_epochs, plot)
-        
-    return baseline_acc, reg_acc
+        num_epochs, plot)
+    '''
+    return non_reg_acc
+    #return reg_acc
 
 if __name__ == '__main__':
     main()
