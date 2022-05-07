@@ -130,7 +130,7 @@ def forward_prop(data, labels, params):
     W2 = params.get("W2")
     b2 = params.get("b2")
 
-    a = sigmoid(data@W1 + b1)
+    a = sigmoid(data@W1/100 + b1)
     z = a@W2 + b2
     y_hat = softmax(z)
     J = -1/data.shape[0]*np.sum(labels*np.log(y_hat))
@@ -165,7 +165,7 @@ def backward_prop(data, labels, params, forward_prop_func):
     dJ_dz = y_hat - labels
     dJ_dW2 = (dJ_dz.T@a).T/a.shape[0]
     dJ_db2 = np.mean(dJ_dz, axis = 0)
-    dJ_dW1 = ((dJ_dz@W2.T*a*(1 - a)).T@data).T/a.shape[0]
+    dJ_dW1 = ((dJ_dz@W2.T*a*(1 - a)).T@data/100).T/a.shape[0]
     dJ_db1 = np.mean(dJ_dz@W2.T*a*(1 - a), axis = 0)
 
     return {"W1": dJ_dW1, "b1": dJ_db1, "W2": dJ_dW2, "b2": dJ_db2}
@@ -201,7 +201,7 @@ def backward_prop_regularized(data, labels, params, forward_prop_func, reg):
     dJ_dz = y_hat - labels
     dJ_dW2 = (dJ_dz.T @ a).T / a.shape[0] + 2*reg*W2
     dJ_db2 = np.mean(dJ_dz, axis=0)
-    dJ_dW1 = ((dJ_dz @ W2.T * a * (1 - a)).T @ data).T / a.shape[0] + 2*reg*W1
+    dJ_dW1 = ((dJ_dz @ W2.T * a * (1 - a)).T @ data/100).T / a.shape[0] + 2*reg*W1
     dJ_db1 = np.mean(dJ_dz @ W2.T * a * (1 - a), axis=0)
 
     return {"W1": dJ_dW1, "b1": dJ_db1, "W2": dJ_dW2, "b2": dJ_db2}
@@ -247,7 +247,7 @@ def gradient_descent_epoch(train_data, train_labels, learning_rate, batch_size, 
     return
 
 def nn_train(
-    train_data, train_labels, dev_data, dev_labels, 
+    train_data, train_labels, dev_data, dev_labels, test_data, test_labels,
     get_initial_params_func, forward_prop_func, backward_prop_func,
     num_hidden=300, learning_rate=5, num_epochs=30, batch_size=1000):
 
@@ -257,8 +257,10 @@ def nn_train(
 
     cost_train = []
     cost_dev = []
+    cost_test = []
     accuracy_train = []
     accuracy_dev = []
+    accuracy_test = []
     for epoch in range(num_epochs):
         gradient_descent_epoch(train_data, train_labels, 
             learning_rate, batch_size, params, forward_prop_func, backward_prop_func)
@@ -269,6 +271,9 @@ def nn_train(
         h, output, cost = forward_prop_func(dev_data, dev_labels, params)
         cost_dev.append(cost)
         accuracy_dev.append(compute_accuracy(output, dev_labels))
+        h, output, cost = forward_prop_func(test_data, test_labels, params)
+        cost_test.append(cost)
+        accuracy_test.append(compute_accuracy(output, test_labels))
 
     return params, cost_train, cost_dev, accuracy_train, accuracy_dev
 
@@ -286,8 +291,9 @@ def run_train_test(name, all_data, all_labels, forward_prop_func, backward_prop_
     params, cost_train, cost_dev, accuracy_train, accuracy_dev = nn_train(
         all_data['train'], all_labels['train'], 
         all_data['dev'], all_labels['dev'],
+        all_data['test'], all_labels['test'],
         get_initial_params, forward_prop_func, backward_prop_func,
-        num_hidden=300, learning_rate=3, num_epochs=num_epochs, batch_size=250
+        num_hidden=300, learning_rate=2, num_epochs=num_epochs, batch_size=250
     )
 
     t = np.arange(num_epochs)
@@ -296,17 +302,19 @@ def run_train_test(name, all_data, all_labels, forward_prop_func, backward_prop_
         fig, (ax1, ax2) = plt.subplots(2, 1)
 
         ax1.plot(t, cost_train,'r', label='train')
-        ax1.plot(t, cost_dev, 'b', label='dev')
+        ax1.plot(t, cost_dev, 'b', label='test')
         ax1.set_xlabel('epochs')
         ax1.set_ylabel('loss')
-        if name == 'baseline':
-            ax1.set_title('Without Regularization')
+        if name == 'non_reg':
+            ax1.set_title('non-reg softmax')
+        elif name == 'relu':
+            ax1.set_title('relu')
         else:
-            ax1.set_title('With Regularization')
+            ax1.set_title('softmax')
         ax1.legend()
 
         ax2.plot(t, accuracy_train,'r', label='train')
-        ax2.plot(t, accuracy_dev, 'b', label='dev')
+        ax2.plot(t, accuracy_dev, 'b', label='test')
         ax2.set_xlabel('epochs')
         ax2.set_ylabel('accuracy')
         ax2.legend()
@@ -319,7 +327,8 @@ def run_train_test(name, all_data, all_labels, forward_prop_func, backward_prop_
     return accuracy
 
 def main(plot=True):
-    num_epochs = 15
+    num_epochs = 30
+    model = 2
 
     file, label = utils.onehot_labels('annotation_dict.json')
     data = np.load('img.npy')
@@ -351,18 +360,19 @@ def main(plot=True):
         'test': test_labels,
     }
 
-    #non_reg_acc = run_train_test('non_reg', all_data, all_labels, forward_prop, backward_prop, num_epochs, plot)
-
-    #reg_acc = run_train_test('regularized', all_data, all_labels, forward_prop,
-    #    lambda a, b, c, d: backward_prop_regularized(a, b, c, d, reg=0.0001),
-    #    num_epochs, plot)
-
-    relu_acc = run_train_test('relu', all_data, all_labels, forward_prop_relu,
-       lambda a, b, c, d: backward_prop_relu(a, b, c, d, reg=0.0001),
-       num_epochs, plot)
-    #return non_reg_acc
-    #return reg_acc
-    return relu_acc
+    if model == 1:
+        non_reg_acc = run_train_test('non_reg', all_data, all_labels, forward_prop, backward_prop, num_epochs, plot)
+        return non_reg_acc
+    elif model == 2:
+        reg_acc = run_train_test('regularized', all_data, all_labels, forward_prop,
+            lambda a, b, c, d: backward_prop_regularized(a, b, c, d, reg=0.0001),
+            num_epochs, plot)
+        return reg_acc
+    elif model == 3:
+        relu_acc = run_train_test('relu', all_data, all_labels, forward_prop_relu,
+           lambda a, b, c, d: backward_prop_relu(a, b, c, d, reg=0.0001),
+           num_epochs, plot)
+        return relu_acc
 
 if __name__ == '__main__':
     main()
