@@ -5,6 +5,8 @@ import os
 import json
 import numpy as np
 import cv2
+import sys
+import math
 
 
 '''
@@ -87,6 +89,17 @@ def extract_first_frame(video_location):
     else:
         raise Exception("First frame not captured")
 
+def extract_first_frame_cnn(video_location):
+    vidcap = cv2.VideoCapture(video_location)
+    success, image = vidcap.read()
+    if success:
+        grey_scale = np.mean(image,axis=-1)
+        #img = np.repeat(np.expand_dims(grey_scale,-1),3,axis=-1)
+        #cv2.imwrite("fuck.jpg",img)
+        return grey_scale
+    else:
+        raise Exception("First frame not captured")
+
 '''
 This function extracts the first frame of all video data and saves as an npy file
 Args:
@@ -108,16 +121,87 @@ def frame_to_data(file):
 
     return np.vstack(img)
 
-def main():
+def frame_to_data_cnn(file):
+    cur_dir = os.path.dirname(__file__)
+    parent_dir = os.path.split(cur_dir)[0]
+    dir = parent_dir + '/dataset/examples/'
+    vid_end = '.mp4'
+
+    img = []
+    for index, name in enumerate(file):
+        if index == 15000:
+            break
+        img.append(extract_first_frame_cnn(dir+name+vid_end))
+
+
+    imgs = np.stack(img, axis=0)
+    imgs = np.expand_dims(imgs, axis=3)
+    np.save('images_cnn.npy', imgs)
+
+    return imgs
+
+def random_mini_batches(X, Y, mini_batch_size=64, seed=0):
+    """
+    Creates a list of random minibatches from (X, Y)
+
+    Arguments:
+    X -- input data, of shape (input size, number of examples) (m, Hi, Wi, Ci)
+    Y -- true "label" vector (containing 0 if cat, 1 if non-cat), of shape (1, number of examples) (m, n_y)
+    mini_batch_size - size of the mini-batches, integer
+    seed -- this is only for the purpose of grading, so that you're "random minibatches are the same as ours.
+
+    Returns:
+    mini_batches -- list of synchronous (mini_batch_X, mini_batch_Y)
+    """
+
+    m = X.shape[0]  # number of training examples
+    mini_batches = []
+    np.random.seed(seed)
+
+    # Step 1: Shuffle (X, Y)
+    permutation = list(np.random.permutation(m))
+    shuffled_X = X[permutation, :, :, :]
+    shuffled_Y = Y[permutation, :]
+
+    # Step 2: Partition (shuffled_X, shuffled_Y). Minus the end case.
+    num_complete_minibatches = math.floor(
+        m / mini_batch_size)  # number of mini batches of size mini_batch_size in your partitionning
+    for k in range(0, num_complete_minibatches):
+        mini_batch_X = shuffled_X[k * mini_batch_size: k * mini_batch_size + mini_batch_size, :, :, :]
+        mini_batch_Y = shuffled_Y[k * mini_batch_size: k * mini_batch_size + mini_batch_size, :]
+        mini_batch = (mini_batch_X, mini_batch_Y)
+        mini_batches.append(mini_batch)
+
+    # Handling the end case (last mini-batch < mini_batch_size)
+    if m % mini_batch_size != 0:
+        mini_batch_X = shuffled_X[num_complete_minibatches * mini_batch_size: m, :, :, :]
+        mini_batch_Y = shuffled_Y[num_complete_minibatches * mini_batch_size: m, :]
+        mini_batch = (mini_batch_X, mini_batch_Y)
+        mini_batches.append(mini_batch)
+
+    return mini_batches
+
+def main(cnn=False):
 
     file, label = onehot_labels('annotation_dict.json')
-    #print(file)
+    # print(file)
     # data1 = matching("labels_dict.json")
     # print(data1)
 
-    img = frame_to_data(file)
-    print(img.shape)
+    if cnn:
+        img = frame_to_data_cnn(file)
+        print(img.shape)
+    else:
+        img = frame_to_data(file)
+        print(img.shape)
+
+
+
 
 
 if __name__ == '__main__':
-    main()
+    if len(sys.argv) > 1:
+        cnn = True
+    else:
+        cnn = False
+    main(cnn)
