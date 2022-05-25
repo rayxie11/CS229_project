@@ -46,6 +46,8 @@ def onehot_labels(file_location):
         label.append(convert_onehot(data[key]))
     label = np.vstack(label)
 
+    np.save("label.npy",label)
+
     return file, label
 
 '''
@@ -73,21 +75,26 @@ def matching(file_location):
 This function extracts the first frame of video
 Args:
     video_location: A string for the location of video to be captured
+    conv: True or False if using a Conv2D layer in NN
 Returns:
-    A 1d greyscale vector reshaped from 2d matrix (22528,)
+    A 1d greyscale vector reshaped from 3d matrix (22528,)
+    OR
+    A 3d matrix of pixels
 Exception:
     First frame capture fails
 '''
-def extract_first_frame(video_location):
+def extract_first_frame(video_location,conv):
     vidcap = cv2.VideoCapture(video_location)
     success, image = vidcap.read()
     if success:
-        grey_scale = np.mean(image,axis=-1)
-        #img = np.repeat(np.expand_dims(grey_scale,-1),3,axis=-1)
-        #cv2.imwrite("fuck.jpg",img)
-        return grey_scale.reshape(-1)
+        if conv:
+            return image
+        else:
+            grey_scale = np.mean(image,axis=-1)
+            return grey_scale.reshape(-1)
     else:
         raise Exception("First frame not captured")
+
 
 def extract_first_frame_cnn(video_location):
     vidcap = cv2.VideoCapture(video_location)
@@ -100,14 +107,18 @@ def extract_first_frame_cnn(video_location):
     else:
         raise Exception("First frame not captured")
 
+
 '''
 This function extracts the first frame of all video data and saves as an npy file
 Args:
     file: A list of file names returned from onehot_labels
+    conv: True or False if using a Conv2D layer in NN
 Returns:
     A 2d numpy array of greyscale vectors (n,22528)
+    OR
+    A 4d numpy array of pixels (n,pixels)
 '''
-def frame_to_data(file):
+def frame_to_data(file,conv):
     cur_dir = os.path.dirname(__file__)
     parent_dir = os.path.split(cur_dir)[0]
     dir = parent_dir + '/dataset/examples/'
@@ -115,11 +126,15 @@ def frame_to_data(file):
 
     img = []
     for name in file:
-        img.append(extract_first_frame(dir+name+vid_end))
+        img.append(extract_first_frame(dir+name+vid_end,conv))
+    
+    if conv:
+        np.save('img_conv.npy',img)
+    else:
+        np.save('img.npy', np.vstack(img))
 
-    np.save('img.npy', np.vstack(img))
+    return img
 
-    return np.vstack(img)
 
 def frame_to_data_cnn(file):
     cur_dir = os.path.dirname(__file__)
@@ -181,27 +196,55 @@ def random_mini_batches(X, Y, mini_batch_size=64, seed=0):
 
     return mini_batches
 
+
+'''
+This function reads the motion data from dataset
+'''
+def read_motion(file_loc):
+    data = np.load(file_loc,allow_pickle=True)
+    flattened = np.zeros((16,2*18))
+    for i in range(len(data)):
+        for j in range(18):
+            if j in data[i]:
+                flattened[i][j*2] = data[i][j][0]
+                flattened[i][j*2+1] = data[i][j][1]
+    return flattened
+
+def motion_pts_all(file):
+    cur_dir = os.path.dirname(__file__)
+    parent_dir = os.path.split(cur_dir)[0]
+    dir = parent_dir + '/dataset/examples/'
+    npy_end = '.npy'
+    result = []
+    for name in file:
+        result.append(read_motion(dir+name+npy_end))
+    np.save('motion.npy',result)
+
+    return np.shape(result)
+
+
 def main(cnn=False):
 
     file, label = onehot_labels('annotation_dict.json')
-    # print(file)
-    # data1 = matching("labels_dict.json")
-    # print(data1)
-
+    print(len(file))
+    #motion_shape = motion_pts_all(file)
+    #print(motion_shape)
+    '''
     if cnn:
         img = frame_to_data_cnn(file)
-        print(img.shape)
+        print(np.shape(img))
     else:
-        img = frame_to_data(file)
-        print(img.shape)
-
-
+        img = frame_to_data(file,True)
+        print(np.shape(img))
+    '''
 
 
 
 if __name__ == '__main__':
+    '''
     if len(sys.argv) > 1:
         cnn = True
     else:
         cnn = False
-    main(cnn)
+    '''
+    main()
