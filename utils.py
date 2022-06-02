@@ -238,6 +238,28 @@ def read_motion_fill_mean(file_loc):
     flattened[:,1::2] = y_ls
     return flattened
 
+def read_motion_fill_interpolate(file_loc):
+    data = np.load(file_loc,allow_pickle=True)
+    data_x = []
+    data_y = []
+    for elem in data:
+        x_dict = dict()
+        y_dict = dict()
+        for key in elem.keys():
+            x_dict[key] = elem[key][0]
+            y_dict[key] = elem[key][1]
+        data_x.append(x_dict)
+        data_y.append(y_dict)
+    col = list(range(0,18))
+    df_x = pd.DataFrame(data_x,columns=col).interpolate(limit_direction='both')
+    df_y = pd.DataFrame(data_y,columns=col).interpolate(limit_direction='both')
+    x_ls = df_x.values.tolist()
+    y_ls = df_y.values.tolist()
+    flattened = np.zeros((16,2*18))
+    flattened[:,0::2] = x_ls
+    flattened[:,1::2] = y_ls
+    return flattened
+
 def motion_pts_all(file):
     cur_dir = os.path.dirname(__file__)
     parent_dir = os.path.split(cur_dir)[0]
@@ -246,8 +268,9 @@ def motion_pts_all(file):
     result = []
     for name in file:
         #result.append(read_motion(dir+name+npy_end))
-        result.append(read_motion_fill_mean(dir+name+npy_end))
-    np.save('motion.npy',result)
+        #result.append(read_motion_fill_mean(dir+name+npy_end))
+        result.append(read_motion_fill_interpolate(dir+name+npy_end))
+    np.save('motion_fill_interpolate.npy',result)
 
     return np.shape(result)
 
@@ -255,9 +278,8 @@ def motion_pts_all(file):
 def main(cnn=False):
 
     file, label = onehot_labels('annotation_dict.json')
-    print(len(file))
-    #motion_shape = motion_pts_all(file)
-    #print(motion_shape)
+    motion_shape = motion_pts_all(file)
+    print(motion_shape)
     '''
     if cnn:
         img = frame_to_data_cnn(file)
