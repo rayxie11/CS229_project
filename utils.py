@@ -1,6 +1,7 @@
 '''
 This file contains all the util functions that are needed to extract information from dataset
 '''
+from copyreg import pickle
 import os
 import json
 import numpy as np
@@ -227,10 +228,16 @@ def read_motion_fill_mean(file_loc):
     df_x = pd.DataFrame(data_x,columns=col)
     df_y = pd.DataFrame(data_y,columns=col)
     for i in col:
-        x_mean = df_x[i].mean()
-        y_mean = df_y[i].mean()
-        df_x[i].fillna(value=x_mean,inplace=True)
-        df_y[i].fillna(value=y_mean,inplace=True)
+        if df_x[i].isnull().all():
+            df_x[i].fillna(value=0,inplace=True)
+        else:
+            x_mean = df_x[i].mean()
+            df_x[i].fillna(value=x_mean,inplace=True)
+        if df_y[i].isnull().all():
+            df_y[i].fillna(value=0,inplace=True)
+        else:
+            y_mean = df_y[i].mean()
+            df_y[i].fillna(value=y_mean,inplace=True)
     x_ls = df_x.values.tolist()
     y_ls = df_y.values.tolist()
     flattened = np.zeros((16,2*18))
@@ -251,8 +258,15 @@ def read_motion_fill_interpolate(file_loc):
         data_x.append(x_dict)
         data_y.append(y_dict)
     col = list(range(0,18))
-    df_x = pd.DataFrame(data_x,columns=col).interpolate(limit_direction='both')
-    df_y = pd.DataFrame(data_y,columns=col).interpolate(limit_direction='both')
+    df_x = pd.DataFrame(data_x,columns=col)
+    df_y = pd.DataFrame(data_y,columns=col)
+    for i in col:
+        if df_x[i].isnull().all():
+            df_x[i].fillna(value=0,inplace=True)
+        if df_y[i].isnull().all():
+            df_y[i].fillna(value=0,inplace=True)
+    df_x = df_x.interpolate(limit_direction='both')
+    df_y = df_y.interpolate(limit_direction='both')
     x_ls = df_x.values.tolist()
     y_ls = df_y.values.tolist()
     flattened = np.zeros((16,2*18))
@@ -268,18 +282,22 @@ def motion_pts_all(file):
     result = []
     for name in file:
         #result.append(read_motion(dir+name+npy_end))
-        #result.append(read_motion_fill_mean(dir+name+npy_end))
-        result.append(read_motion_fill_interpolate(dir+name+npy_end))
-    np.save('motion_fill_interpolate.npy',result)
+        result.append(read_motion_fill_mean(dir+name+npy_end))
+        #result.append(read_motion_fill_interpolate(dir+name+npy_end))
+    np.save('motion_fill_mean.npy',result)
 
     return np.shape(result)
 
 
 def main(cnn=False):
 
-    file, label = onehot_labels('annotation_dict.json')
-    motion_shape = motion_pts_all(file)
-    print(motion_shape)
+    #file, label = onehot_labels('annotation_dict.json')
+    #motion_shape = motion_pts_all(file)
+    #print(motion_shape)
+
+    # check nan in file
+    data = np.load('motion_fill_interpolate.npy',allow_pickle=True)
+    print(np.isnan(data).any())
     '''
     if cnn:
         img = frame_to_data_cnn(file)
