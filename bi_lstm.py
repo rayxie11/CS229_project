@@ -36,11 +36,5 @@ class rnn_model():
 if __name__ == '__main__':
     X = np.load('motion_fill_interpolate.npy')
     Y = np.load('label.npy')
-    '''X_train = X[:25000, :, :]
-    Y_train = Y[:25000, :]
-    X_dev = X[25000:30000, :, :]
-    Y_dev = Y[25000:30000, :]
-    X_test = X[30000:35000, :, :]
-    Y_test = Y[30000:35000, :]'''
     model = rnn_model(30, 11)
     model.train_test(X, Y, 70, 128)
