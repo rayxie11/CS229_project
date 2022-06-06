@@ -104,7 +104,7 @@ def extract_first_frame_cnn(video_location):
     if success:
         grey_scale = np.mean(image,axis=-1)
         #img = np.repeat(np.expand_dims(grey_scale,-1),3,axis=-1)
-        #cv2.imwrite("fuck.jpg",img)
+        #cv2.imwrite("test.jpg",img)
         return grey_scale
     else:
         raise Exception("First frame not captured")
