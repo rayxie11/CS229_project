@@ -291,13 +291,14 @@ def motion_pts_all(file):
 
 def main(cnn=False):
 
-    #file, label = onehot_labels('annotation_dict.json')
+    file, label = onehot_labels('annotation_dict.json')
+    print(len(file))
     #motion_shape = motion_pts_all(file)
     #print(motion_shape)
 
     # check nan in file
-    data = np.load('motion_fill_interpolate.npy',allow_pickle=True)
-    print(np.isnan(data).any())
+    #data = np.load('motion_fill_interpolate.npy',allow_pickle=True)
+    #print(np.isnan(data).any())
     '''
     if cnn:
         img = frame_to_data_cnn(file)
