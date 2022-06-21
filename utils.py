@@ -274,6 +274,36 @@ def read_motion_fill_interpolate(file_loc):
     flattened[:,1::2] = y_ls
     return flattened
 
+def read_motion_fill_pad(file_loc):
+    data = np.load(file_loc,allow_pickle=True)
+    data_x = []
+    data_y = []
+    for elem in data:
+        x_dict = dict()
+        y_dict = dict()
+        for key in elem.keys():
+            x_dict[key] = elem[key][0]
+            y_dict[key] = elem[key][1]
+        data_x.append(x_dict)
+        data_y.append(y_dict)
+    col = list(range(0,18))
+    df_x = pd.DataFrame(data_x,columns=col)
+    df_y = pd.DataFrame(data_y,columns=col)
+    df_x = df_x.pad(limit=4)
+    df_y = df_y.pad(limit=4)
+    df_x = df_x.bfill(limit=4)
+    df_y = df_y.bfill(limit=4)
+    # df_x = df_x.pad()
+    # df_y = df_y.pad()
+    df_x.fillna(value=0, inplace=True)
+    df_y.fillna(value=0, inplace=True)
+    x_ls = df_x.values.tolist()
+    y_ls = df_y.values.tolist()
+    flattened = np.zeros((16,2*18))
+    flattened[:,0::2] = x_ls
+    flattened[:,1::2] = y_ls
+    return flattened
+
 def motion_pts_all(file):
     cur_dir = os.path.dirname(__file__)
     parent_dir = os.path.split(cur_dir)[0]
@@ -282,9 +312,10 @@ def motion_pts_all(file):
     result = []
     for name in file:
         #result.append(read_motion(dir+name+npy_end))
-        result.append(read_motion_fill_mean(dir+name+npy_end))
+        #result.append(read_motion_fill_mean(dir+name+npy_end))
         #result.append(read_motion_fill_interpolate(dir+name+npy_end))
-    np.save('motion_fill_mean.npy',result)
+        result.append(read_motion_fill_pad(dir + name + npy_end))
+    np.save('motion_fill_pad.npy',result)
 
     return np.shape(result)
 
